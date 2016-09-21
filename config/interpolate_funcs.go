@@ -83,6 +83,10 @@ func Funcs() map[string]ast.Function {
 		"split":        interpolationFuncSplit(),
 		"trimspace":    interpolationFuncTrimSpace(),
 		"upper":        interpolationFuncUpper(),
+		// added by Barry
+		"mapFromList":  interpolationFuncMapFromList(),
+		"mapFromPairs": interpolationFuncMapFromPairs(),
+		"zip":          interpolationFuncZip(),
 	}
 }
 
@@ -996,3 +1000,116 @@ func interpolationFuncUUID() ast.Function {
 		},
 	}
 }
+
+// interpolationFuncMapFromList creates a map from the parameters passed to it as a list
+func interpolationFuncMapFromList() ast.Function {
+	return ast.Function{
+		ArgTypes:   []ast.Type{ast.TypeList},
+		ReturnType: ast.TypeMap,
+		Callback: func(args []interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("accepts only one argument.")
+			}
+			return interpolationFuncMap().Callback(args)
+		},
+	}
+}
+
+// interpolationFuncMapFromList creates a map from composed from key-value pairs
+func interpolationFuncMapFromPairs() ast.Function {
+	return ast.Function{
+		ArgTypes:     []ast.Type{ast.TypeList},
+		ReturnType:   ast.TypeMap,
+		Variadic:     true,
+		VariadicType: ast.TypeList,
+		Callback: func(args []interface{}) (interface{}, error) {
+			for _, arg := range args {
+				if len(arg) != 2 {
+					return nil, fmt.Errorf("input lists requires exactly two arguments, got %d for list %s", len(arg), arg)
+				}
+			}
+
+			outputMap := make(map[string]ast.Variable)
+			for _, arg := range args {
+			}
+
+			// we don't support heterogeneous types, so make sure all types match the first
+			if len(outputList) > 0 {
+				firstType := outputList[0].Type
+				for _, v := range outputList[1:] {
+					if v.Type != firstType {
+						return nil, fmt.Errorf("unexpected %s in list of %s", v.Type.Printable(), firstType.Printable())
+					}
+				}
+			}
+
+			return outputList, nil
+		},
+	}
+}
+
+// interpolationFuncZip creates a map from a list of keys and a list of values
+func interpolationFuncZip() ast.Function {
+	return ast.Function{
+		ArgTypes:   []ast.Type{},
+		ReturnType: ast.TypeMap,
+		Callback: func(args []interface{}) (interface{}, error) {
+			outputMap := make(map[string]ast.Variable)
+
+			if len(args) != 2 {
+				return nil, fmt.Errorf("requires exactly two arguments, got %d", len(args))
+			}
+
+			keys := args[0].([]string)
+			values := args[1].([]ast.Variable)
+
+			if len(keys) != len(values) {
+				return nil, fmt.Errorf("the keys and values lists must have the same length")
+			}
+
+			for i, key := range keys {
+				variable, err := hil.InterfaceToVariable(values[i])
+				if err != nil {
+					return nil, err
+				}
+				// Check for duplicate keys
+				if _, ok := outputMap[key]; ok {
+					return nil, fmt.Errorf("argument %d is a duplicate key: %q", i+1, key)
+				}
+				outputMap[key] = variable
+			}
+
+			return outputMap, nil
+		},
+	}
+}
+
+//--- map functions
+// mapFromList
+// mapFromPairs
+// zip
+// invert: Creates an object composed of the inverted keys and values of object. If object contains duplicate values, subsequent values overwrite property assignments of previous values.
+// formatKeys
+// formatValues
+
+//--- list functions
+// append: Creates a new array concatenating array with any additional arrays and/or values.
+// fill: Fills elements of array with value from start up to, but not including, end.
+// head: get the first n elements of a list (n defaults to 1)
+// tail: get the last n elements of a list (n defaults to 1)
+// spread/splat: apply the items in the list as spread arguments to a function (is this even possible in go?)
+// reverse: reverse the items in a list
+
+//--- comparison functions
+// if: 3 args, if first is true, use second, else use third
+// compare: 3 args, comparator string (eq, neq, gt, lt, gte, etc.), left side, right side
+// has: returns true if a map has the requested key
+// any: returns true if any item in the list matches the comparator
+// all: returns true if all items in the list match the comparator
+// not: inverts boolean value
+
+//--- random functions
+// jsondecode
+
+//--- math funcs
+// min, max, floor, ceil

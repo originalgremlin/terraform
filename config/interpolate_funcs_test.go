@@ -188,6 +188,81 @@ func TestInterpolateFuncMap(t *testing.T) {
 	})
 }
 
+func TestInterpolateFuncMapList(t *testing.T) {
+	testFunction(t, testFunctionConfig{
+		Cases: []testFunctionCase{
+			// empty input is error
+			{
+				`${maplist()}`,
+				nil,
+				true,
+			},
+
+			// odd args is error
+			{
+				`${maplist(list("odd"))}`,
+				nil,
+				true,
+			},
+
+			// two args returns map w/ one k/v
+			{
+				`${maplist(list("hello", "world"))}`,
+				map[string]interface{}{"hello": "world"},
+				false,
+			},
+
+			// four args get two k/v
+			{
+				`${maplist(list("hello", "world", "what's", "up?"))}`,
+				map[string]interface{}{"hello": "world", "what's": "up?"},
+				false,
+			},
+
+			// map of lists is okay
+			{
+				`${maplist(list("hello", list("world"), "what's", list("up?")))}`,
+				map[string]interface{}{
+					"hello":  []interface{}{"world"},
+					"what's": []interface{}{"up?"},
+				},
+				false,
+			},
+
+			// map of maps is okay
+			{
+				`${maplist(list("hello", map("there", "world"), "what's", map("really", "up?")))}`,
+				map[string]interface{}{
+					"hello":  map[string]interface{}{"there": "world"},
+					"what's": map[string]interface{}{"really": "up?"},
+				},
+				false,
+			},
+
+			// keys have to be strings
+			{
+				`${maplist(list(list("listkey"), "val"))}`,
+				nil,
+				true,
+			},
+
+			// types have to match
+			{
+				`${maplist(list("some", "strings", "also", list("lists")))}`,
+				nil,
+				true,
+			},
+
+			// duplicate keys are an error
+			{
+				`${maplist(list("key", "val", "key", "again"))}`,
+				nil,
+				true,
+			},
+		},
+	})
+}
+
 func TestInterpolateFuncCompact(t *testing.T) {
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
